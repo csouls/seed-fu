@@ -24,6 +24,7 @@ module SeedFu
       @options     = options.symbolize_keys
 
       @options[:quiet] ||= SeedFu.quiet
+      @options[:without_protection] ||= true
 
       validate_constraints!
       validate_data!
@@ -64,7 +65,16 @@ module SeedFu
 
         puts " - #{@model_class} #{data.inspect}" unless @options[:quiet]
 
-        record.assign_attributes(data)
+
+        if @options[:without_protection]
+          begin
+            record.assign_attributes(data)
+          rescue ActiveRecord::UnknownAttributeError => e
+            puts e
+          end
+        else
+          record.assign_attributes(data)
+        end
         record.save(:validate => false) || raise(ActiveRecord::RecordNotSaved)
         record
       end
