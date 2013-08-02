@@ -76,7 +76,7 @@ module SeedFu
           record.assign_attributes(data)
         end
         unless record.save
-          record.erros.each { |attr, msg| puts "#{attr} - #{msg}" }
+          record.errors.each { |attr, msg| puts "#{attr} - #{msg}" }
           raise(ActiveRecord::RecordNotSaved)
         end
         record
