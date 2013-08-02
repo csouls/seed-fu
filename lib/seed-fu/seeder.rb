@@ -75,7 +75,7 @@ module SeedFu
         else
           record.assign_attributes(data)
         end
-        record.save(:validate => false) || raise(ActiveRecord::RecordNotSaved)
+        record.save || raise(ActiveRecord::RecordNotSaved)
         record
       end
 
