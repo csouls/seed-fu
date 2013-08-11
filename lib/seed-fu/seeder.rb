@@ -26,6 +26,12 @@ module SeedFu
       @options[:quiet] ||= SeedFu.quiet
       @options[:without_protection] ||= true
 
+      @columns = {}
+      column_struct = Struct.new(:name, :null, :type)
+      @model_class.columns.each do |column|
+        @columns[column.name.to_sym] = column_struct.new(column.name.to_sym, column.null, column.type)
+      end
+
       validate_constraints!
       validate_data!
     end
@@ -63,17 +69,35 @@ module SeedFu
         record = find_or_initialize_record(data)
         return if @options[:insert_only] && !record.new_record?
 
-        puts " - #{@model_class} #{data.inspect}" unless @options[:quiet]
+        new_data = {}
+        data.each_pair do |k, v|
+          column = @columns[k]
+          next unless column
+          if column.null
+            if v.is_a?(String) && v.size == 0
+              v = nil
+            end
+          end
+          if column.type == :datetime
+            begin
+              v = v.in_time_zone
+            rescue
+              v = nil
+            end
+          end
+          new_data[k] = v
+        end
 
+        puts " - #{@model_class} #{new_data.inspect}" unless @options[:quiet]
 
         if @options[:without_protection]
           begin
-            record.assign_attributes(data)
+            record.assign_attributes(new_data)
           rescue ActiveRecord::UnknownAttributeError => e
             puts e
           end
         else
-          record.assign_attributes(data)
+          record.assign_attributes(new_data)
         end
         unless record.save
           record.errors.each { |attr, msg| puts "#{attr} - #{msg}" }
