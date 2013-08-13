@@ -73,17 +73,9 @@ module SeedFu
         data.each_pair do |k, v|
           column = @columns[k]
           next unless column
-          if column.null
-            if v.is_a?(String) && v.size == 0
-              v = nil
-            end
-          end
-          if column.type == :datetime
-            begin
-              v = v.in_time_zone
-            rescue
-              v = nil
-            end
+          next if [:created_at, :updated_at].include? column.name
+          if column.null && v.size == 0
+            v = nil
           end
           new_data[k] = v
         end
