@@ -1,6 +1,6 @@
 require 'active_record'
 require 'active_support/core_ext/module/attribute_accessors'
-require 'seed-fu/railtie' if defined?(Rails) && Rails.version >= "3"
+require 'seed-fu/railtie' if defined?(Rails) && Gem::Version.create(Rails.version) >= Gem::Version.create("4.0.0")
 
 module SeedFu
   autoload :VERSION,               'seed-fu/version'

@@ -24,6 +24,13 @@ module SeedFu
       @options     = options.symbolize_keys
 
       @options[:quiet] ||= SeedFu.quiet
+      @options[:without_protection] ||= true
+
+      @columns = {}
+      column_struct = Struct.new(:name, :null, :type)
+      @model_class.columns.each do |column|
+        @columns[column.name.to_sym] = column_struct.new(column.name.to_sym, column.null, column.type)
+      end
 
       validate_constraints!
       validate_data!
@@ -62,15 +69,37 @@ module SeedFu
         record = find_or_initialize_record(data)
         return if @options[:insert_only] && !record.new_record?
 
-        puts " - #{@model_class} #{data.inspect}" unless @options[:quiet]
+        new_data = {}
+        data.each_pair do |k, v|
+          column = @columns[k]
+          next unless column
+          next if [:created_at, :updated_at].include? column.name
+          if column.null && v.size == 0
+            v = nil
+          end
+          new_data[k] = v
+        end
 
-        record.assign_attributes(data,  :without_protection => true)
-        record.save(:validate => false) || raise(ActiveRecord::RecordNotSaved)
+        puts " - #{@model_class} #{new_data.inspect}" unless @options[:quiet]
+
+        if @options[:without_protection]
+          begin
+            record.assign_attributes(new_data)
+          rescue ActiveRecord::UnknownAttributeError => e
+            puts e
+          end
+        else
+          record.assign_attributes(new_data)
+        end
+        unless record.save
+          record.errors.each { |attr, msg| puts "#{attr} - #{msg}" }
+          raise(ActiveRecord::RecordNotSaved)
+        end
         record
       end
 
       def find_or_initialize_record(data)
-        @model_class.where(constraint_conditions(data)).first ||
+        @model_class.unscoped.where(constraint_conditions(data)).first ||
         @model_class.new
       end
 
